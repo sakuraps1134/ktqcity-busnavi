@@ -120,6 +120,7 @@ async function getRoutes(){
 function buildTimetableHtml(busId){
 
     const position = timetableMap[busId];
+    console.log(position.StopTimeUpdates[0]);
 
     if(!position){
         return "<p>時刻表なし</p>";
@@ -196,20 +197,23 @@ async function loadRoute(routeId, staffeName) {
     const marker = L.marker([lat, lon]);
 
        marker.bindPopup(`
+<div style="width:350px">
+
+    <b>車両番号</b><br>
+   ${toHalfWidth(bus.BusName)}<br><br>
+
+    <b>行路</b><br>
+    ${staffeName}<br><br>
+
     <div style="
-        max-height:400px;
+        max-height:300px;
         overflow-y:auto;
-        min-width:300px">
-
-        <b>車両番号</b><br>
-        ${bus.BusName}<br><br>
-
-        <b>行路</b><br>
-        ${staffeName}<br><br>
-
+        border:1px solid #ccc;
+    ">
         ${buildTimetableHtml(busId)}
-
     </div>
+
+</div>
 `);
 
         markerLayer.addLayer(marker);
@@ -218,7 +222,22 @@ async function loadRoute(routeId, staffeName) {
 
 }
 
+
+function toHalfWidth(str){
+
+    return String(str).replace(
+        /[０-９]/g,
+        s => String.fromCharCode(
+            s.charCodeAt(0) - 65248
+        )
+    );
+
+}
+
 async function loadBusPositionTimetable(){
+    for (const key in timetableMap) {
+    delete timetableMap[key];
+}
 
     const res = await fetch(
         PROXY +
