@@ -145,6 +145,11 @@ function buildTimetableHtml(busId, suji){
         const mapStop =
             suji.SujiStatus[i];
 
+            console.log(
+    mapStop.DepartTime,
+    mapStop.ArriveTime
+);
+
         const stopName =
             busStopMap[posStop.BusStopId] ||
             posStop.BusStopId;
