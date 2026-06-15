@@ -119,6 +119,12 @@ async function getRoutes(){
 }
 function buildTimetableHtml(busId, suji){
 
+     console.log(
+        "buildTimetableHtml",
+        busId,
+        suji
+    );
+
     const position = timetableMap[busId];
 
     if(!position || !suji){
@@ -190,9 +196,16 @@ async function loadRoute(routeId, staffeName) {
 
     const data = await res.json();
 
+    console.log(data);
+
     if (!data.Sujis) return;
 
     data.Sujis.forEach(suji => {
+
+        console.log(
+    "Suji",
+    suji
+);
 
     if (!suji.Bus) return;
 
