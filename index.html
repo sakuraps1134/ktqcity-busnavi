@@ -117,46 +117,54 @@ async function getRoutes(){
     return await res.json();
 
 }
-function buildTimetableHtml(busId){
+function buildTimetableHtml(busId, suji){
 
     const position = timetableMap[busId];
-    console.log(position.StopTimeUpdates[0]);
 
-    if(!position){
+    if(!position || !suji){
         return "<p>時刻表なし</p>";
     }
 
     let html = `
-        <table border="1"
-               style="border-collapse:collapse;width:100%">
-        <tr>
-            <th>バス停</th>
-            <th>時刻</th>
-        </tr>
+    <table border="1"
+           style="border-collapse:collapse;width:100%">
+    <tr>
+        <th>バス停</th>
+        <th>時刻</th>
+    </tr>
     `;
 
-    position.StopTimeUpdates.forEach(stop => {
+    for(let i=0;
+        i < position.StopTimeUpdates.length &&
+        i < suji.SujiStatus.length;
+        i++){
 
-    const dt =
-        stop.Departure?.Time ||
-        stop.Arrival?.Time;
+        const posStop =
+            position.StopTimeUpdates[i];
 
-    if (!dt) return;
+        const mapStop =
+            suji.SujiStatus[i];
 
-    const stopName =
-        busStopMap[stop.BusStopId] ||
-        stop.BusStopId;
+        const stopName =
+            busStopMap[posStop.BusStopId] ||
+            posStop.BusStopId;
 
-    const time =
-        dt.substring(11,16);
+        const dt =
+            mapStop.DepartTime ||
+            mapStop.ArriveTime;
 
-    html += `
+        const time =
+            dt
+            ? dt.substring(11,16)
+            : "";
+
+        html += `
         <tr>
             <td>${stopName}</td>
             <td>${time}</td>
         </tr>
-    `;
-});
+        `;
+    }
 
     html += "</table>";
 
@@ -209,7 +217,7 @@ async function loadRoute(routeId, staffeName) {
         overflow-y:auto;
         border:1px solid #ccc;
     ">
-        ${buildTimetableHtml(busId)}
+       ${buildTimetableHtml(busId, suji)}
     </div>
 
 </div>
