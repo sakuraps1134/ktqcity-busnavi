@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>北九州市営バスロケ</title>
+
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<style>
+html,body{
+    margin:0;
+    width:100%;
+    height:100%;
+}
+
+#map{
+    width:100%;
+    height:100%;
+}
+
+.bus-popup{
+    line-height:1.6;
+}
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+
+// ===== Cloudflare Worker =====
+const PROXY =
+    "https://ktq-proxy.sakuraps1134.workers.dev/?url=";
+
+// ===== 地図 =====
+const map = L.map("map").setView(
+    [33.883,130.875],
+    12
+);
+
+L.tileLayer(
+    "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    {
+        attribution:"© OpenStreetMap"
+    }
+).addTo(map);
+
+// マーカー管理
+const markerLayer = L.layerGroup().addTo(map);
+
+// ======================
+// XML取得
+// ======================
+async function fetchXml(url){
+
+    const res = await fetch(
+        PROXY + encodeURIComponent(url)
+    );
+
+    if(!res.ok){
+        throw new Error(
+            `HTTP ${res.status}`
+        );
+    }
+
+    const text = await res.text();
+
+    return new DOMParser().parseFromString(
+        text,
+        "text/xml"
+    );
+}
+
+// ======================
+// 行路取得
+// ======================
+async function getRoutes(){
+
+    const xml = await fetchXml(
+        "https://kitakyushu.busyohou.jp/api/v1/busstop/operating_bus"
+    );
+
+    const routes =
+        xml.getElementsByTagName(
+            "OperationBuses"
+        );
+
+    return [...routes].map(route => ({
+
+        routeId:
+            route.getElementsByTagName(
+                "RouteId"
+            )[0]?.textContent,
+
+        staffeName:
+            route.getElementsByTagName(
+                "StaffeName"
+            )[0]?.textContent || ""
+
+    }));
+}
+
+// ======================
+// 1行路取得
+// ======================
+async function loadRoute(routeId, staffeName){
+
+    try{
+
+        const xml = await fetchXml(
+            `https://kitakyushu.busyohou.jp/api/v1/busstop/bus_maps?rid=${routeId}`
+        );
+
+        const buses =
+            xml.getElementsByTagName("Bus");
+
+        [...buses].forEach(bus=>{
+
+            const lat = parseFloat(
+                bus.getElementsByTagName(
+                    "BusLatitude"
+                )[0]?.textContent
+            );
+
+            const lon = parseFloat(
+                bus.getElementsByTagName(
+                    "BusLongitude"
+                )[0]?.textContent
+            );
+
+            if(
+                isNaN(lat) ||
+                isNaN(lon)
+            ){
+                return;
+            }
+
+            const busName =
+                bus.getElementsByTagName(
+                    "BusName"
+                )[0]?.textContent || "";
+
+            const plateNo =
+                bus.getElementsByTagName(
+                    "PlateNo"
+                )[0]?.textContent || "";
+
+            const marker =
+                L.marker([lat,lon]);
+
+            marker.bindPopup(`
+                <div class="bus-popup">
+                    <b>車両番号</b><br>
+                    ${busName}<br><br>
+
+                    <b>ナンバー</b><br>
+                    ${plateNo}<br><br>
+
+                    <b>行路</b><br>
+                    ${staffeName}
+                </div>
+            `);
+
+            markerLayer.addLayer(marker);
+
+        });
+
+    }catch(err){
+
+        console.error(
+            routeId,
+            err
+        );
+
+    }
+}
+
+// ======================
+// 全更新
+// ======================
+async function refreshBusLocation(){
+
+    console.log(
+        "更新:",
+        new Date().toLocaleTimeString()
+    );
+
+    markerLayer.clearLayers();
+
+    try{
+
+        const routes =
+            await getRoutes();
+
+        await Promise.all(
+
+            routes.map(route =>
+
+                loadRoute(
+                    route.routeId,
+                    route.staffeName
+                )
+
+            )
+
+        );
+
+    }catch(err){
+
+        console.error(err);
+
+    }
+}
+
+// 初回
+refreshBusLocation();
+
+// 30秒ごと更新
+setInterval(
+    refreshBusLocation,
+    30000
+);
+
+</script>
+
+</body>
+</html>
