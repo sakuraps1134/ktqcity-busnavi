@@ -44,12 +44,37 @@ const map = L.map("map").setView(
     12
 );
 
+
+
 L.tileLayer(
     "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
     {
         attribution:"© OpenStreetMap"
     }
 ).addTo(map);
+
+const busStopMap = {};
+const timetableMap = {};
+async function loadBusStops(){
+
+    const res = await fetch(
+        PROXY +
+        encodeURIComponent(
+            "https://kitakyushu.busyohou.jp/api/v2/busstop/busstops"
+        )
+    );
+
+    const busStops = await res.json();
+
+    busStops.forEach(stop => {
+        busStopMap[stop.Id] = stop.Name;
+    });
+
+    console.log(
+        "バス停読込完了",
+        Object.keys(busStopMap).length
+    );
+}
 
 // マーカー管理
 const markerLayer = L.layerGroup().addTo(map);
@@ -92,6 +117,51 @@ async function getRoutes(){
     return await res.json();
 
 }
+function buildTimetableHtml(busId){
+
+    const position = timetableMap[busId];
+
+    if(!position){
+        return "<p>時刻表なし</p>";
+    }
+
+    let html = `
+        <table border="1"
+               style="border-collapse:collapse;width:100%">
+        <tr>
+            <th>バス停</th>
+            <th>時刻</th>
+        </tr>
+    `;
+
+    position.StopTimeUpdates.forEach(stop => {
+
+        const stopName =
+            busStopMap[stop.BusStopId] ||
+            stop.BusStopId;
+
+        let time = "";
+
+        if(stop.Arrival &&
+           stop.Arrival.OnTime){
+
+            time =
+              stop.Arrival.OnTime
+              .substring(11,16);
+        }
+
+        html += `
+            <tr>
+                <td>${stopName}</td>
+                <td>${time}</td>
+            </tr>
+        `;
+    });
+
+    html += "</table>";
+
+    return html;
+}
 
 // ======================
 // 1行路取得
@@ -111,24 +181,36 @@ async function loadRoute(routeId, staffeName) {
 
     data.Sujis.forEach(suji => {
 
-        if (!suji.Bus) return;
+    if (!suji.Bus) return;
 
-        const bus = suji.Bus;
+    const bus = suji.Bus;
 
-        const lat = bus.BusLatitude;
-        const lon = bus.BusLongitude;
+    // ←追加
+    const busId = bus.BusId;
 
-        if (!lat || !lon) return;
+    const lat = bus.BusLatitude;
+    const lon = bus.BusLongitude;
 
-        const marker = L.marker([lat, lon]);
+    if (!lat || !lon) return;
 
-        marker.bindPopup(`
-            <b>車両番号</b><br>
-            ${bus.BusName}<br><br>
+    const marker = L.marker([lat, lon]);
 
-            <b>行路</b><br>
-            ${staffeName}
-        `);
+       marker.bindPopup(`
+    <div style="
+        max-height:400px;
+        overflow-y:auto;
+        min-width:300px">
+
+        <b>車両番号</b><br>
+        ${bus.BusName}<br><br>
+
+        <b>行路</b><br>
+        ${staffeName}<br><br>
+
+        ${buildTimetableHtml(busId)}
+
+    </div>
+`);
 
         markerLayer.addLayer(marker);
 
@@ -136,6 +218,26 @@ async function loadRoute(routeId, staffeName) {
 
 }
 
+async function loadBusPositionTimetable(){
+
+    const res = await fetch(
+        PROXY +
+        encodeURIComponent(
+            "https://kitakyushu.busyohou.jp/api/v2/busstop/buses/position"
+        )
+    );
+
+    const positions = await res.json();
+
+    timetableMap.clear?.();
+
+    positions.forEach(bus => {
+
+        timetableMap[bus.BusId] = bus;
+
+    });
+
+}
 // ======================
 // 全更新
 // ======================
@@ -161,13 +263,31 @@ async function refreshBusLocation(){
 }
 
 // 初回
-refreshBusLocation();
+// ======================
+// 起動
+// ======================
+
+(async () => {
+
+    // バス停マスタ取得（初回のみ）
+    await loadBusStops();
+
+    // 運行中車両時刻表取得
+    await loadBusPositionTimetable();
+
+    // 地図表示
+    await refreshBusLocation();
+
+})();
 
 // 30秒ごと更新
-setInterval(
-    refreshBusLocation,
-    30000
-);
+setInterval(async () => {
+
+    await loadBusPositionTimetable();
+
+    await refreshBusLocation();
+
+}, 30000);
 
 </script>
 
