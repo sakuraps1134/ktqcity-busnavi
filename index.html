@@ -119,12 +119,6 @@ async function getRoutes(){
 }
 function buildTimetableHtml(busId, suji){
 
-     console.log(
-        "buildTimetableHtml",
-        busId,
-        suji
-    );
-
     const position = timetableMap[busId];
 
     if(!position || !suji){
@@ -140,25 +134,29 @@ function buildTimetableHtml(busId, suji){
     </tr>
     `;
 
-    for(let i=0;
-        i < position.StopTimeUpdates.length &&
-        i < suji.SujiStatus.length;
-        i++){
+    const posStops = position.StopTimeUpdates;
 
-        const posStop =
-            position.StopTimeUpdates[i];
+    const sujiStops = suji.SujiStatus;
 
-        const mapStop =
-            suji.SujiStatus[i];
+    const count = Math.min(
+        posStops.length,
+        sujiStops.length
+    );
 
-           console.log(mapStop);
+    for(let i=0;i<count;i++){
+
+        const posStop = posStops[i];
+        const sujiStop = sujiStops[i];
+
         const stopName =
-            busStopMap[posStop.BusStopId] ||
-            posStop.BusStopId;
+            busStopMap[posStop.BusStopId]
+            || posStop.BusStopId;
 
         const dt =
-            mapStop.DepartTime ||
-            mapStop.ArriveTime;
+            sujiStop.DepartureEstimatedTime ||
+            sujiStop.ArrivalEstimatedTime ||
+            sujiStop.DepartTime ||
+            sujiStop.ArriveTime;
 
         const time =
             dt
@@ -177,7 +175,6 @@ function buildTimetableHtml(busId, suji){
 
     return html;
 }
-
 // ======================
 // 1行路取得
 // ======================
@@ -217,21 +214,21 @@ async function loadRoute(routeId, staffeName) {
 
     const marker = L.marker([lat, lon]);
 
-       marker.bindPopup(`
+      marker.bindPopup(`
 <div style="width:350px">
 
     <b>車両番号</b><br>
-   ${toHalfWidth(bus.BusName)}<br><br>
+    ${toHalfWidth(bus.BusName)}<br><br>
 
     <b>行路</b><br>
     ${staffeName}<br><br>
 
     <div style="
-        max-height:300px;
+        height:300px;
         overflow-y:auto;
         border:1px solid #ccc;
     ">
-       ${buildTimetableHtml(busId, suji)}
+        ${buildTimetableHtml(busId,suji)}
     </div>
 
 </div>
