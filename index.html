@@ -82,103 +82,58 @@ async function fetchXml(url){
 // ======================
 async function getRoutes(){
 
-    const xml = await fetchXml(
-        "https://kitakyushu.busyohou.jp/api/v1/busstop/operating_bus"
+    const res = await fetch(
+        PROXY +
+        encodeURIComponent(
+            "https://kitakyushu.busyohou.jp/api/v1/busstop/operating_bus"
+        )
     );
 
-    const routes =
-        xml.getElementsByTagName(
-            "OperationBuses"
-        );
+    return await res.json();
 
-    return [...routes].map(route => ({
-
-        routeId:
-            route.getElementsByTagName(
-                "RouteId"
-            )[0]?.textContent,
-
-        staffeName:
-            route.getElementsByTagName(
-                "StaffeName"
-            )[0]?.textContent || ""
-
-    }));
 }
 
 // ======================
 // 1行路取得
 // ======================
-async function loadRoute(routeId, staffeName){
+async function loadRoute(routeId, staffeName) {
 
-    try{
-
-        const xml = await fetchXml(
+    const res = await fetch(
+        PROXY +
+        encodeURIComponent(
             `https://kitakyushu.busyohou.jp/api/v1/busstop/bus_maps?rid=${routeId}`
-        );
+        )
+    );
 
-        const buses =
-            xml.getElementsByTagName("Bus");
+    const data = await res.json();
 
-        [...buses].forEach(bus=>{
+    if (!data.Sujis) return;
 
-            const lat = parseFloat(
-                bus.getElementsByTagName(
-                    "BusLatitude"
-                )[0]?.textContent
-            );
+    data.Sujis.forEach(suji => {
 
-            const lon = parseFloat(
-                bus.getElementsByTagName(
-                    "BusLongitude"
-                )[0]?.textContent
-            );
+        if (!suji.Bus) return;
 
-            if(
-                isNaN(lat) ||
-                isNaN(lon)
-            ){
-                return;
-            }
+        const bus = suji.Bus;
 
-            const busName =
-                bus.getElementsByTagName(
-                    "BusName"
-                )[0]?.textContent || "";
+        const lat = bus.BusLatitude;
+        const lon = bus.BusLongitude;
 
-            const plateNo =
-                bus.getElementsByTagName(
-                    "PlateNo"
-                )[0]?.textContent || "";
+        if (!lat || !lon) return;
 
-            const marker =
-                L.marker([lat,lon]);
+        const marker = L.marker([lat, lon]);
 
-            marker.bindPopup(`
-                <div class="bus-popup">
-                    <b>車両番号</b><br>
-                    ${busName}<br><br>
+        marker.bindPopup(`
+            <b>車両番号</b><br>
+            ${bus.BusName}<br><br>
 
-                    <b>ナンバー</b><br>
-                    ${plateNo}<br><br>
+            <b>行路</b><br>
+            ${staffeName}
+        `);
 
-                    <b>行路</b><br>
-                    ${staffeName}
-                </div>
-            `);
+        markerLayer.addLayer(marker);
 
-            markerLayer.addLayer(marker);
+    });
 
-        });
-
-    }catch(err){
-
-        console.error(
-            routeId,
-            err
-        );
-
-    }
 }
 
 // ======================
@@ -186,36 +141,23 @@ async function loadRoute(routeId, staffeName){
 // ======================
 async function refreshBusLocation(){
 
-    console.log(
-        "更新:",
-        new Date().toLocaleTimeString()
-    );
-
     markerLayer.clearLayers();
 
-    try{
+    const routes = await getRoutes();
 
-        const routes =
-            await getRoutes();
+    await Promise.all(
 
-        await Promise.all(
+        routes.map(route =>
 
-            routes.map(route =>
-
-                loadRoute(
-                    route.routeId,
-                    route.staffeName
-                )
-
+            loadRoute(
+                route.RouteId,
+                route.StaffeName
             )
 
-        );
+        )
 
-    }catch(err){
+    );
 
-        console.error(err);
-
-    }
 }
 
 // 初回
