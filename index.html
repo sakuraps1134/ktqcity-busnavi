@@ -137,27 +137,26 @@ function buildTimetableHtml(busId){
 
     position.StopTimeUpdates.forEach(stop => {
 
-        const stopName =
-            busStopMap[stop.BusStopId] ||
-            stop.BusStopId;
+    const dt =
+        stop.Departure?.Time ||
+        stop.Arrival?.Time;
 
-        let time = "";
+    if (!dt) return;
 
-        if(stop.Arrival &&
-           stop.Arrival.OnTime){
+    const stopName =
+        busStopMap[stop.BusStopId] ||
+        stop.BusStopId;
 
-            time =
-              stop.Arrival.OnTime
-              .substring(11,16);
-        }
+    const time =
+        dt.substring(11,16);
 
-        html += `
-            <tr>
-                <td>${stopName}</td>
-                <td>${time}</td>
-            </tr>
-        `;
-    });
+    html += `
+        <tr>
+            <td>${stopName}</td>
+            <td>${time}</td>
+        </tr>
+    `;
+});
 
     html += "</table>";
 
