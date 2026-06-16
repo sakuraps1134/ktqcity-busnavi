@@ -217,12 +217,31 @@ function buildTimetableHtml(busId, suji) {
        const hasTime = !!dt;
 
 html += `
-    <tr class="${hasTime ? 'has-time' : 'no-time'}">
-        <td style="padding: 4px; border-bottom: 1px solid #eee; font-family: monospace;">
-            ${time}
-        </td>
-        <td style="padding: 4px; border-bottom: 1px solid #eee;">
+    <tr
+    class="${hasTime ? 'has-time' : 'no-time'}"
+    style="
+        ${hasTime
+            ? ''
+            : 'background:#f3f3f3;color:#999;'
+        }
+    "
+>
+       
+        <td style="
+    padding:4px;
+    border-bottom:1px solid #eee;
+    font-family:system-ui;
+    font-size:15px;
+">
             ${stopName}
+        </td>
+        <td style="
+    padding:4px;
+    border-bottom:1px solid #eee;
+    font-family:system-ui;
+    font-size:15px;
+">
+            ${time}
         </td>
     </tr>
 `;
