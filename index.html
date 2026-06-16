@@ -182,18 +182,35 @@ function buildTimetableHtml(busId, suji) {
         return "<p>時刻表なし</p>";
     }
 
-    // テーブルのヘッダー部分
-    // style="position: sticky; top: 0; background: #fff;" でヘッダーを固定表示
-    let html = `
-        <table style="border-collapse: collapse; width: 100%; font-size: 14px;">
-            <thead>
-                <tr style="position: sticky; top: 0; background: #eee; z-index: 1;">
-                    <th style="padding: 6px; text-align: left; width: 60px; border-bottom: 2px solid #ccc;">時刻</th>
-                    <th style="padding: 6px; text-align: left; border-bottom: 2px solid #ccc;">バス停</th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
+  let html = `
+    <table style="
+        border-collapse: collapse;
+        width: 100%;
+        table-layout: fixed;
+        font-size: 14px;
+    ">
+        <thead>
+            <tr style="position: sticky; top: 0; background: #eee; z-index: 1;">
+                <th style="
+                    padding: 6px;
+                    text-align: left;
+                    border-bottom: 2px solid #ccc;
+                ">
+                    バス停
+                </th>
+
+                <th style="
+                    width: 70px;
+                    padding: 6px;
+                    text-align: center;
+                    border-bottom: 2px solid #ccc;
+                ">
+                    時刻
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+`;
 
     const posStops = position.StopTimeUpdates || [];
     const sujiStops = suji.SujiStatus || [];
@@ -231,7 +248,7 @@ html += `
     padding:4px;
     border-bottom:1px solid #eee;
     font-family:system-ui;
-    font-size:15px;
+    font-size:13px;
 ">
             ${stopName}
         </td>
@@ -239,7 +256,7 @@ html += `
     padding:4px;
     border-bottom:1px solid #eee;
     font-family:system-ui;
-    font-size:15px;
+    font-size:13px;
 ">
             ${time}
         </td>
