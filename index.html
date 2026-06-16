@@ -137,24 +137,40 @@ async function loadRoute(routeId, staffeName) {
         
         if (!lat || !lon) return;
         
-        const marker = L.marker([lat, lon]);
-        
-        // ここでポップアップの中身を定義します
-        marker.bindPopup(`
-            <div style="width: 300px; max-height: 400px; display: flex; flex-direction: column;">
-                <div style="margin-bottom: 8px;">
-                    <div style="font-weight: bold;">車両番号</div>
-                    <div>${toHalfWidth(bus.BusName)}</div>
-                    <div style="font-weight: bold; margin-top: 5px;">行路</div>
-                    <div>${staffeName}</div>
-                </div>
-                <div style="flex-grow: 1; overflow-y: auto; border: 1px solid #ccc;">
-                    ${buildTimetableHtml(busId, suji)}
-                </div>
-            </div>
-        `);
-        
-        markerLayer.addLayer(marker);
+      const marker = L.marker([lat, lon]);
+
+marker.bindPopup(`
+    <div style="width: 280px; max-height: 300px; display: flex; flex-direction: column;">
+        <div style="margin-bottom: 8px;">
+            <div style="font-weight: bold;">車両番号</div>
+            <div>${toHalfWidth(bus.BusName)}</div>
+            <div style="font-weight: bold; margin-top: 5px;">行路</div>
+            <div>${staffeName}</div>
+        </div>
+        <div style="flex-grow: 1; overflow-y: auto; border: 1px solid #ccc;">
+            ${buildTimetableHtml(busId, suji)}
+        </div>
+    </div>
+`);
+
+marker.on("popupopen", (e) => {
+    setTimeout(() => {
+
+        const container = e.popup.getElement()
+            .querySelector("div[style*='overflow-y']");
+
+        if (!container) return;
+
+        const target = container.querySelector(".has-time");
+
+        if (target) {
+            container.scrollTop = target.offsetTop - 50;
+        }
+
+    }, 50);
+});
+
+markerLayer.addLayer(marker);
     });
 }
 // ======================
@@ -194,14 +210,22 @@ function buildTimetableHtml(busId, suji) {
                    sujiStop.ArrivalEstimatedTime || 
                    sujiStop.DepartTime || 
                    sujiStop.ArriveTime;
-        const time = dt ? dt.substring(11, 16) : "--:--";
+        const time = dt
+    ? dt.substring(11, 16)
+    : "通過済";
 
-        html += `
-            <tr>
-                <td style="padding: 4px; border-bottom: 1px solid #eee; vertical-align: top; font-family: monospace;">${time}</td>
-                <td style="padding: 4px; border-bottom: 1px solid #eee; vertical-align: top;">${stopName}</td>
-            </tr>
-        `;
+       const hasTime = !!dt;
+
+html += `
+    <tr class="${hasTime ? 'has-time' : 'no-time'}">
+        <td style="padding: 4px; border-bottom: 1px solid #eee; font-family: monospace;">
+            ${time}
+        </td>
+        <td style="padding: 4px; border-bottom: 1px solid #eee;">
+            ${stopName}
+        </td>
+    </tr>
+`;
     }
 
     html += `</tbody></table>`;
