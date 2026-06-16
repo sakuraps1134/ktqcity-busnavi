@@ -125,11 +125,7 @@ function buildTimetableHtml(busId, suji){
         return "<p>時刻表なし</p>";
     }
 
-    console.log(
-        busId,
-        position.StopTimeUpdates.length,
-        suji.SujiStatus.length
-    );
+   
 
     let html = `
 <table border="1"
@@ -145,6 +141,11 @@ const sujiStops = suji.SujiStatus || [];
 
 console.log(
     busId,
+    posStops.length,
+    sujiStops.length
+);
+
+const count = Math.min(
     posStops.length,
     sujiStops.length
 );
