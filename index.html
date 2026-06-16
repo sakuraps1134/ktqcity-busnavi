@@ -132,24 +132,22 @@ function buildTimetableHtml(busId, suji){
     );
 
     let html = `
+<table border="1"
+       style="border-collapse:collapse;width:100%">
+<tr>
+    <th>バス停</th>
+    <th>時刻</th>
+</tr>
+`;
 
-    let html = `
-    <table border="1"
-           style="border-collapse:collapse;width:100%">
-    <tr>
-        <th>バス停</th>
-        <th>時刻</th>
-    </tr>
-    `;
+   const posStops = position.StopTimeUpdates || [];
+const sujiStops = suji.SujiStatus || [];
 
-    const posStops = position.StopTimeUpdates;
-
-    const sujiStops = suji.SujiStatus;
-
-    const count = Math.min(
-        posStops.length,
-        sujiStops.length
-    );
+console.log(
+    busId,
+    posStops.length,
+    sujiStops.length
+);
 
     for(let i=0;i<count;i++){
 
