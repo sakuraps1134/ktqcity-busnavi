@@ -117,78 +117,45 @@ async function getRoutes(){
     return await res.json();
 
 }
-function buildTimetableHtml(busId, suji){
-
-    const position = timetableMap[busId];
-
-    if(!position || !suji){
-        return "<p>時刻表なし</p>";
-    }
-
-   
-
-    let html = `
-<table border="1"
-       style="border-collapse:collapse;width:100%">
-<tr>
-    <th>バス停</th>
-    <th>時刻</th>
-</tr>
-`;
-
-const posStops = position.StopTimeUpdates || [];
-const sujiStops = suji.SujiStatus || [];
-
-console.log(
-    busId,
-    posStops.length,
-    sujiStops.length
-);
-
-const count = Math.min(
-    posStops.length,
-    sujiStops.length
-);
-
-    for(let i=0;i<count;i++){
-
-        const posStop = posStops[i];
-        const sujiStop = sujiStops[i];
-
-        const stopName =
-            busStopMap[posStop.BusStopId]
-            || posStop.BusStopId;
-
-        const dt =
-            sujiStop.DepartureEstimatedTime ||
-            sujiStop.ArrivalEstimatedTime ||
-            sujiStop.DepartTime ||
-            sujiStop.ArriveTime;
-
-        const time =
-            dt
-            ? dt.substring(11,16)
-            : "";
-
-       html += `
-<tr>
-    <td style="width:75%">
-        ${stopName}
-    </td>
-    <td style="
-        width:25%;
-        text-align:right;
-        white-space:nowrap;
-    ">
-        ${time}
-    </td>
-</tr>
-`;
-    }
-
-    html += "</table>";
-
-    return html;
+// ======================
+// 1行路取得（この関数を追加してください）
+// ======================
+async function loadRoute(routeId, staffeName) {
+    const res = await fetch(
+        PROXY + encodeURIComponent(`https://kitakyushu.busyohou.jp/api/v1/busstop/bus_maps?rid=${routeId}`)
+    );
+    const data = await res.json();
+    
+    if (!data.Sujis) return;
+    
+    data.Sujis.forEach(suji => {
+        if (!suji.Bus) return;
+        const bus = suji.Bus;
+        const busId = bus.BusId;
+        const lat = bus.BusLatitude;
+        const lon = bus.BusLongitude;
+        
+        if (!lat || !lon) return;
+        
+        const marker = L.marker([lat, lon]);
+        
+        // ここでポップアップの中身を定義します
+        marker.bindPopup(`
+            <div style="width: 300px; max-height: 400px; display: flex; flex-direction: column;">
+                <div style="margin-bottom: 8px;">
+                    <div style="font-weight: bold;">車両番号</div>
+                    <div>${toHalfWidth(bus.BusName)}</div>
+                    <div style="font-weight: bold; margin-top: 5px;">行路</div>
+                    <div>${staffeName}</div>
+                </div>
+                <div style="flex-grow: 1; overflow-y: auto; border: 1px solid #ccc;">
+                    ${buildTimetableHtml(busId, suji)}
+                </div>
+            </div>
+        `);
+        
+        markerLayer.addLayer(marker);
+    });
 }
 // ======================
 // 1行路取得
