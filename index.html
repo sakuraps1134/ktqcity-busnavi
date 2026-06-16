@@ -170,12 +170,20 @@ const count = Math.min(
             ? dt.substring(11,16)
             : "";
 
-        html += `
-        <tr>
-            <td>${stopName}</td>
-            <td>${time}</td>
-        </tr>
-        `;
+       html += `
+<tr>
+    <td style="width:75%">
+        ${stopName}
+    </td>
+    <td style="
+        width:25%;
+        text-align:right;
+        white-space:nowrap;
+    ">
+        ${time}
+    </td>
+</tr>
+`;
     }
 
     html += "</table>";
@@ -185,66 +193,52 @@ const count = Math.min(
 // ======================
 // 1行路取得
 // ======================
-async function loadRoute(routeId, staffeName) {
+function buildTimetableHtml(busId, suji) {
+    const position = timetableMap[busId];
+    if (!position || !suji) {
+        return "<p>時刻表なし</p>";
+    }
 
-    const res = await fetch(
-        PROXY +
-        encodeURIComponent(
-            `https://kitakyushu.busyohou.jp/api/v1/busstop/bus_maps?rid=${routeId}`
-        )
-    );
+    // テーブルのヘッダー部分
+    // style="position: sticky; top: 0; background: #fff;" でヘッダーを固定表示
+    let html = `
+        <table style="border-collapse: collapse; width: 100%; font-size: 14px;">
+            <thead>
+                <tr style="position: sticky; top: 0; background: #eee; z-index: 1;">
+                    <th style="padding: 6px; text-align: left; width: 60px; border-bottom: 2px solid #ccc;">時刻</th>
+                    <th style="padding: 6px; text-align: left; border-bottom: 2px solid #ccc;">バス停</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
 
-    const data = await res.json();
+    const posStops = position.StopTimeUpdates || [];
+    const sujiStops = suji.SujiStatus || [];
+    const count = Math.min(posStops.length, sujiStops.length);
 
-    console.log(data);
+    // 各行の生成
+    for (let i = 0; i < count; i++) {
+        const posStop = posStops[i];
+        const sujiStop = sujiStops[i];
+        const stopName = busStopMap[posStop.BusStopId] || posStop.BusStopId;
+        
+        // 時刻の取得
+        const dt = sujiStop.DepartureEstimatedTime || 
+                   sujiStop.ArrivalEstimatedTime || 
+                   sujiStop.DepartTime || 
+                   sujiStop.ArriveTime;
+        const time = dt ? dt.substring(11, 16) : "--:--";
 
-    if (!data.Sujis) return;
+        html += `
+            <tr>
+                <td style="padding: 4px; border-bottom: 1px solid #eee; vertical-align: top; font-family: monospace;">${time}</td>
+                <td style="padding: 4px; border-bottom: 1px solid #eee; vertical-align: top;">${stopName}</td>
+            </tr>
+        `;
+    }
 
-    data.Sujis.forEach(suji => {
-
-        console.log(
-    "Suji",
-    suji
-);
-
-    if (!suji.Bus) return;
-
-    const bus = suji.Bus;
-
-    // ←追加
-    const busId = bus.BusId;
-
-    const lat = bus.BusLatitude;
-    const lon = bus.BusLongitude;
-
-    if (!lat || !lon) return;
-
-    const marker = L.marker([lat, lon]);
-
-      marker.bindPopup(`
-<div style="width:350px">
-
-    <b>車両番号</b><br>
-    ${toHalfWidth(bus.BusName)}<br><br>
-
-    <b>行路</b><br>
-    ${staffeName}<br><br>
-
-    <div style="
-        height:300px;
-        overflow-y:auto;
-        border:1px solid #ccc;
-    ">
-        ${buildTimetableHtml(busId,suji)}
-    </div>
-
-</div>
-`);
-
-        markerLayer.addLayer(marker);
-
-    });
-
+    html += `</tbody></table>`;
+    return html;
 }
 
 
