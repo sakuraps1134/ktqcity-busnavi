@@ -12,6 +12,7 @@
 
 <link rel="stylesheet"
 href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
 <style>
 html,body{
@@ -59,6 +60,11 @@ L.tileLayer(
 
 const busStopMap = {};
 const timetableMap = {};
+// 車両番号→アイコンURL
+const iconMap = {};
+
+// Leafletアイコンのキャッシュ
+const leafletIconCache = {};
 async function loadBusStops(){
 
     const res = await fetch(
@@ -78,6 +84,82 @@ async function loadBusStops(){
         "バス停読込完了",
         Object.keys(busStopMap).length
     );
+}
+
+// ======================
+// アイコン一覧読込
+// ======================
+async function loadIconList(){
+
+    const res = await fetch(
+        "https://raw.githubusercontent.com/sakuraps1134/ktqcity-busnavi/main/iconlist.xlsx"
+    );
+
+    const arrayBuffer = await res.arrayBuffer();
+
+    const workbook = XLSX.read(arrayBuffer, {
+        type: "array"
+    });
+
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+
+    const rows = XLSX.utils.sheet_to_json(sheet, {
+        header: 1
+    });
+
+    rows.forEach(row => {
+
+        if(row.length < 2) return;
+
+        const iconUrl = String(row[0]).trim();
+
+        let busList = String(row[1]).trim();
+
+        busList = busList
+            .replace(/^\{/, "")
+            .replace(/\}$/, "");
+
+        busList.split(",").forEach(busNo => {
+
+            busNo = busNo.trim();
+
+            if(busNo){
+                iconMap[busNo] = iconUrl;
+            }
+
+        });
+
+    });
+
+    console.log(iconMap);
+
+}
+function getBusIcon(busNo){
+
+    const url = iconMap[busNo];
+
+    if(!url){
+        return null;
+    }
+
+    if(!leafletIconCache[url]){
+
+        leafletIconCache[url] = L.icon({
+
+            iconUrl: url,
+
+            iconSize: [40,40],
+
+            iconAnchor: [20,20],
+
+            popupAnchor: [0,-20]
+
+        });
+
+    }
+
+    return leafletIconCache[url];
+
 }
 
 // マーカー管理
@@ -141,7 +223,16 @@ async function loadRoute(routeId, staffeName) {
         
         if (!lat || !lon) return;
         
-      const marker = L.marker([lat, lon]);
+      const icon = getBusIcon(toHalfWidth(bus.BusName));
+      console.log(
+    "車両",
+    toHalfWidth(bus.BusName),
+    iconMap[toHalfWidth(bus.BusName)]
+);
+
+const marker = icon
+    ? L.marker([lat, lon], { icon })
+    : L.marker([lat, lon]);
 
 marker.bindPopup(`
     <div style="width: 280px; max-height: 300px; display: flex; flex-direction: column;">
@@ -338,7 +429,10 @@ async function refreshBusLocation(){
 
 (async () => {
 
-    // バス停マスタ取得（初回のみ）
+    // アイコン一覧取得
+    await loadIconList();
+
+    // バス停マスタ取得
     await loadBusStops();
 
     // 運行中車両時刻表取得
